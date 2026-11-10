@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Requisition Pro">
+    <title>ระบบเบิกจ่ายอะไหล่และพัสดุ A4 มืออาชีพ (Inventory Requisition Pro)</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Sarabun & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- html2pdf.js for Direct PDF File Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Sarabun', 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* A4 Workspace & Exact Sheet Styling */
+        .a4-workspace {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+            padding: 20px 12px 60px 12px;
+            transform-origin: top center;
+            transition: transform 0.2s ease;
+        }
+
+        .a4-page {
+            background: #ffffff;
+            color: #0f172a;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+            position: relative;
+            box-sizing: border-box;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 210mm;
+            height: 297mm;
+            min-width: 210mm;
+            min-height: 297mm;
+            max-width: 210mm;
+            max-height: 297mm;
+            padding: 12mm 15mm;
+            border-radius: 2px;
+        }
+
+        /* Print Media Query */
+        @media print {
+            html, body {
+                background: #ffffff !important;
+                color: #000000 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            #mainLayout {
+                display: block !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            #previewContainer {
+                overflow: visible !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                background: transparent !important;
+            }
+            .a4-workspace {
+                transform: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                gap: 0 !important;
+                display: block !important;
+            }
+            .a4-page {
+                box-shadow: none !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-orange-500 selection:text-white">
+
+    <!-- ==========================================
+         TOP NAVIGATION & ACTION BAR (NO-PRINT)
+         ========================================== -->
+    <header class="no-print sticky top-0 z-40 bg-slate-900/95 backdrop-blur border-b border-slate-700/80 px-3.5 py-2.5 shadow-lg">
+        <div class="max-w-[1920px] mx-auto flex flex-wrap items-center justify-between gap-2">
+            <!-- Brand -->
+            <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-md shadow-orange-500/20">
+                    <i class="fa-solid fa-boxes-stacked text-white text-lg"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-bold text-sm sm:text-base tracking-tight text-white">REQUISITION & INVENTORY PRO</h1>
+                        <span class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/40">
+                            ระบบเบิกจ่ายมืออาชีพ
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 hidden sm:block">
+                        เพิ่มรายการพัสดุทีละหลายตัว | Google Sheets | ปริ้นงาน & บันทึก .PDF / .WORD
+                    </p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <!-- Manage Stock Modal -->
+                <button onclick="openStockModal()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/40 text-xs font-semibold flex items-center gap-1.5 shadow transition">
+                    <i class="fa-solid fa-warehouse"></i>
+                    <span>คลังพัสดุ (เพิ่มของ)</span>
+                </button>
+
+                <!-- History / Google Sheets Modal -->
+                <button onclick="openSheetsModal()" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow transition">
+                    <i class="fa-solid fa-table"></i>
+                    <span>Google Sheets / ตรวจสอบ</span>
+                </button>
+
+                <!-- Export & Print -->
+                <div class="flex items-center bg-slate-800 p-0.5 rounded-lg border border-slate-700">
+                    <button onclick="printOrSavePDF()" class="px-2.5 py-1.5 rounded-md hover:bg-slate-700 text-amber-300 text-xs font-medium flex items-center gap-1 transition">
+                        <i class="fa-solid fa-print"></i>
+                        <span>ปริ้น/.PDF</span>
+                    </button>
+                    <button onclick="exportWordDoc()" class="px-2.5 py-1.5 rounded-md hover:bg-slate-700 text-sky-300 text-xs font-medium flex items-center gap-1 transition">
+                        <i class="fa-solid fa-file-word"></i>
+                        <span>.WORD</span>
+                    </button>
+                    <button onclick="saveRequisitionRecord()" class="px-2.5 py-1.5 rounded-md bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold flex items-center gap-1 transition">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>บันทึกเบิกจ่าย</span>
+                    </button>
+                </div>
+
+                <!-- Install PWA on Phone -->
+                <button onclick="handleInstallPWA()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-500/40 text-xs font-medium flex items-center gap-1.5 shadow transition">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                    <span class="hidden sm:inline">ติดตั้งแอป</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==========================================
+         MAIN WORKSPACE (LEFT SIDEBAR + RIGHT A4 PREVIEW)
+         ========================================== -->
+    <div id="mainLayout" class="flex-1 flex flex-col lg:flex-row max-w-[1920px] w-full mx-auto overflow-hidden">
+
+        <!-- LEFT CONTROL PANEL (NO-PRINT) -->
+        <aside class="no-print w-full lg:w-[440px] xl:w-[470px] bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-800 overflow-y-auto lg:h-[calc(100vh-61px)] p-3.5 space-y-4 shrink-0">
+
+            <!-- 1. REQUISITION HEADER (ชื่อผู้เบิก, วันที่, เวลา) -->
+            <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-3.5 shadow-sm space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-user-check"></i> ข้อมูลผู้เบิกและใบเบิกอะไหล่
+                    </h2>
+                    <button onclick="resetRequisitionForm()" class="px-2 py-0.5 rounded text-[11px] bg-slate-700 hover:bg-slate-600 text-slate-200">
+                        <i class="fa-solid fa-rotate-right mr-1"></i> ใบเบิกใหม่
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[11px] text-slate-300 mb-1">ชื่อผู้เบิก (Requester Name) *</label>
+                        <input type="text" id="inpRequesterName" oninput="updateHeaderInfo()" placeholder="ระบุชื่อ-นามสกุลผู้เบิก" class="w-full bg-slate-900 border border-slate-600 focus:border-orange-500 rounded-lg px-2.5 py-1.5 text-xs text-white font-semibold outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-slate-300 mb-1">รหัสพนักงาน (Employee ID)</label>
+                        <input type="text" id="inpEmpId" oninput="updateHeaderInfo()" placeholder="เช่น EMP-5092" class="w-full bg-slate-900 border border-slate-600 focus:border-orange-500 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-slate-300 mb-1">แผนก / ส่วนงาน (Department)</label>
+                        <input type="text" id="inpDepartment" oninput="updateHeaderInfo()" placeholder="เช่น แผนกซ่อมบำรุงไฟฟ้า" class="w-full bg-slate-900 border border-slate-600 focus:border-orange-500 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-slate-300 mb-1">เลขที่ใบเบิก (Requisition No.)</label>
+                        <input type="text" id="inpReqNo" oninput="updateHeaderInfo()" placeholder="REQ-2026-001" class="w-full bg-slate-900 border border-slate-600 focus:border-orange-500 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-slate-300 mb-1">วันที่เบิก (Date) *</label>
+                        <input type="date" id="inpReqDate" onchange="updateHeaderInfo()" class="w-full bg-slate-900 border border-slate-600 focus:border-orange-500 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-slate-300 mb-1">เวลาเบิก (Time) *</label>
+                        <input type="time" id="inpReqTime" onchange="updateHeaderInfo()" class="w-full bg-slate-900 border border-slate-600 focus:border-orange-500 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-slate-300 mb-1">วัตถุประสงค์ / ใช้กับเครื่องจักร (Purpose / Machine)</label>
+                    <input type="text" id="inpPurpose" oninput="updateHeaderInfo()" placeholder="เช่น เปลี่ยนตลับลูกปืน Motor Blower #1" class="w-full bg-slate-900 border border-slate-600 focus:border-orange-500 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none">
+                </div>
+            </div>
+
+            <!-- 2. ADD ITEMS TO REQUISITION (SELECT FROM STOCK OR QUICK ADD) -->
+            <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-3.5 shadow-sm space-y-3">
+                <div class="flex items-center justify-between border-b border-slate-700 pb-2">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-cart-plus"></i> เพิ่มรายการพัสดุเข้าใบเบิก
+                    </h2>
+                    <button onclick="openStockModal()" class="text-[11px] text-sky-300 hover:underline">
+                        + จัดการคลังพัสดุ
+                    </button>
+                </div>
+
+                <!-- Select from Stock Dropdown & Quantity -->
+                <div class="space-y-2">
+                    <div>
+                        <label class="block text-[11px] text-slate-300 mb-1">เลือกอะไหล่/พัสดุจากคลัง</label>
+                        <select id="selStockItem" class="w-full bg-slate-900 border border-slate-600 focus:border-sky-500 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none">
+                            <option value="">-- เลือกรายการพัสดุในคลัง --</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2">
+                        <div class="w-28">
+                            <label class="block text-[11px] text-slate-300 mb-1">จำนวนเบิก</label>
+                            <input type="number" id="inpAddQty" min="1" value="1" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-2.5 py-1.5 text-xs text-white text-center font-bold">
+                        </div>
+                        <div class="flex-1 flex items-end">
+                            <button onclick="addSelectedItemToRequisition()" class="w-full py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold shadow flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-plus"></i> เพิ่มเข้ารายการเบิก
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bulk Add Custom Items -->
+                <div class="pt-2 border-t border-slate-700">
+                    <label class="block text-[11px] font-semibold text-amber-300 mb-1">เพิ่มรายการพัสดุเอง (พิมพ์ชื่อและจำนวนได้ทันที)</label>
+                    <div class="space-y-2">
+                        <input type="text" id="inpCustomItemName" placeholder="ชื่ออะไหล่ / วัสดุ เช่น สายพาน B-52" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="number" id="inpCustomItemQty" min="1" value="1" placeholder="จำนวน" class="bg-slate-900 border border-slate-600 rounded-lg px-2.5 py-1.5 text-xs text-white text-center font-bold outline-none">
+                            <input type="text" id="inpCustomItemUnit" placeholder="หน่วย (เช่น เส้น, ตัว, ชิ้น)" class="bg-slate-900 border border-slate-600 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none">
+                        </div>
+                        <button onclick="addCustomItemToRequisition()" class="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow">
+                            + เพิ่มรายการนี้เข้ารายการเบิก
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. ACTIVE REQUISITION ITEMS TABLE LIST -->
+            <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-3.5 shadow-sm space-y-2">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-list-check"></i> รายการพัสดุที่กำลังเบิกในใบนี้ (<span id="lblItemCount">0</span> รายการ)
+                    </h3>
+                    <button onclick="clearRequisitionItems()" class="text-[10px] text-rose-400 hover:underline">
+                        ล้างรายการทั้งหมด
+                    </button>
+                </div>
+                <div id="requisitionItemsEditorList" class="space-y-1.5 max-h-56 overflow-y-auto pr-1"></div>
+            </div>
+
+        </aside>
+
+        <!-- RIGHT LIVE A4 REQUISITION PREVIEW -->
+        <main id="previewContainer" class="flex-1 bg-slate-950/90 overflow-auto relative flex flex-col items-center">
+            <!-- Floating Zoom & Action Bar (No-Print) -->
+            <div class="no-print sticky top-3 z-30 bg-slate-900/95 backdrop-blur border border-slate-700 rounded-full px-4 py-1.5 shadow-xl flex items-center gap-3 mt-3 mx-2">
+                <span class="text-xs text-slate-300 font-medium flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-lines text-orange-400"></i> กระดาษ A4 ใบเบิกจ่าย
+                </span>
+                <div class="h-4 w-px bg-slate-700"></div>
+                <div class="flex items-center gap-1">
+                    <button onclick="adjustPreviewZoom(-0.1)" class="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-xs text-white flex items-center justify-center">
+                        <i class="fa-solid fa-minus"></i>
+                    </button>
+                    <span id="zoomValueText" class="text-xs font-bold text-amber-400 w-12 text-center">100%</span>
+                    <button onclick="adjustPreviewZoom(0.1)" class="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-xs text-white flex items-center justify-center">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                    <button onclick="fitZoomToScreen()" class="ml-1 px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-sky-300">
+                        พอดีจอ
+                    </button>
+                </div>
+            </div>
+
+            <!-- The A4 Sheet Container -->
+            <div id="a4Workspace" class="a4-workspace">
+                <div id="a4Page" class="a4-page">
+                    <!-- Top Document Header -->
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #0f172a; padding-bottom:8px; margin-bottom:12px;">
+                            <div>
+                                <h2 style="font-size:18px; font-weight:800; color:#0f172a; letter-spacing:0.5px; margin:0;">ใบเบิกวัสดุและอะไหล่ (REQUISITION SLIP)</h2>
+                                <div style="font-size:11px; color:#475569;">บริษัท / โรงงานอุตสาหกรรม - ระบบเบิกจ่ายซ่อมบำรุง</div>
+                            </div>
+                            <div style="text-align:right; font-size:11px; color:#334155;">
+                                <div><strong>เลขที่:</strong> <span id="viewReqNo" style="color:#2563eb; font-weight:700;">REQ-2026-001</span></div>
+                                <div><strong>วันที่:</strong> <span id="viewReqDate">-</span> | <strong>เวลา:</strong> <span id="viewReqTime">-</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Requester Info Box -->
+                        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:8px 12px; margin-bottom:12px; font-size:11.5px; display:grid; grid-template-columns:repeat(2, 1fr); gap:4px 12px;">
+                            <div><strong>ชื่อผู้เบิก:</strong> <span id="viewRequesterName" style="color:#0f172a; font-weight:700;">-</span></div>
+                            <div><strong>รหัสพนักงาน:</strong> <span id="viewEmpId">-</span></div>
+                            <div><strong>แผนก / ส่วนงาน:</strong> <span id="viewDepartment">-</span></div>
+                            <div><strong>วัตถุประสงค์ / เครื่องจักร:</strong> <span id="viewPurpose" style="color:#2563eb; font-weight:600;">-</span></div>
+                        </div>
+
+                        <!-- Items Table -->
+                        <table style="width:100%; border-collapse:collapse; font-size:11px; margin-bottom:12px;" border="1" cellspacing="0" cellpadding="6">
+                            <thead>
+                                <tr style="background:#0f172a; color:#ffffff; text-align:center;">
+                                    <th style="width:8%; padding:6px; border:1px solid #334155;">ลำดับ</th>
+                                    <th style="width:20%; padding:6px; border:1px solid #334155;">รหัสพัสดุ</th>
+                                    <th style="width:42%; padding:6px; border:1px solid #334155; text-align:left;">รายการพัสดุ / อะไหล่</th>
+                                    <th style="width:15%; padding:6px; border:1px solid #334155;">จำนวนเบิก</th>
+                                    <th style="width:15%; padding:6px; border:1px solid #334155;">หน่วยนับ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="viewTableBody">
+                                <!-- Populated via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Bottom Signatures -->
+                    <div style="border-top:1.5px solid #cbd5e1; padding-top:12px; font-size:10.5px;">
+                        <div style="margin-bottom:20px; color:#475569;">
+                            <strong>หมายเหตุ:</strong> โปรดตรวจสอบความถูกต้องของรายการอะไหล่และพัสดุก่อนลงนามเบิกจ่ายออกจากคลัง
+                        </div>
+                        <div style="display:flex; justify-content:space-between; text-align:center; padding:0 20px;">
+                            <div>
+                                <div style="border-bottom:1px dotted #475569; width:160px; height:24px; margin:0 auto;"></div>
+                                <div style="margin-top:4px; font-weight:700;" id="signRequesterName">ผู้เบิกสินค้า</div>
+                                <div style="color:#64748b; font-size:9.5px;">วันที่: ......./......./.......</div>
+                            </div>
+                            <div>
+                                <div style="border-bottom:1px dotted #475569; width:160px; height:24px; margin:0 auto;"></div>
+                                <div style="margin-top:4px; font-weight:700;">ผู้จ่ายพัสดุ (Store Keeper)</div>
+                                <div style="color:#64748b; font-size:9.5px;">วันที่: ......./......./.......</div>
+                            </div>
+                            <div>
+                                <div style="border-bottom:1px dotted #475569; width:160px; height:24px; margin:0 auto;"></div>
+                                <div style="margin-top:4px; font-weight:700;">ผู้อนุมัติ (Manager)</div>
+                                <div style="color:#64748b; font-size:9.5px;">วันที่: ......./......./.......</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ==========================================
+         STOCK MANAGEMENT MODAL (เพิ่มของในคลัง / ทีละหลายตัว)
+         ========================================== -->
+    <div id="stockModal" class="no-print fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+            <div class="px-4 py-3 bg-slate-800 flex items-center justify-between border-b border-slate-700">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-warehouse text-sky-400 text-lg"></i>
+                    <div>
+                        <h3 class="text-sm font-bold text-white">จัดการคลังพัสดุและอะไหล่ (เพิ่มพัสดุใหม่ทีละหลายตัว)</h3>
+                        <p class="text-[11px] text-slate-400">เพิ่มรายการพัสดุ อะไหล่ หรือเครื่องมือเข้าคลัง เพื่อใช้เลือกเบิกจ่ายในระบบ</p>
+                    </div>
+                </div>
+                <button onclick="closeStockModal()" class="text-slate-400 hover:text-white text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-4 overflow-y-auto space-y-4 flex-1">
+                <!-- Add New Stock Form -->
+                <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3.5 space-y-3">
+                    <h4 class="text-xs font-bold text-sky-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-plus"></i> เพิ่มพัสดุเข้าคลังใหม่
+                    </h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-300 mb-1">รหัสพัสดุ (SKU Code)</label>
+                            <input type="text" id="newStockCode" placeholder="เช่น SP-MTR-001" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-[10px] text-slate-300 mb-1">ชื่อรายการพัสดุ / อะไหล่ *</label>
+                            <input type="text" id="newStockName" placeholder="เช่น ตลับลูกปืน SKF 6312" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 mb-1">จำนวนในคลัง</label>
+                            <input type="number" id="newStockQty" min="1" value="10" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-2.5 py-1.5 text-xs text-white text-center font-bold outline-none">
+                        </div>
+                    </div>
+                    <div class="flex gap-2 items-end">
+                        <div class="flex-1">
+                            <label class="block text-[10px] text-slate-300 mb-1">หน่วยนับ (Unit)</label>
+                            <input type="text" id="newStockUnit" placeholder="เช่น ตลับ, เส้น, ชิ้น, อัน" value="ชิ้น" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none">
+                        </div>
+                        <button onclick="addNewStockItem()" class="px-4 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold shadow flex items-center gap-1 shrink-0">
+                            <i class="fa-solid fa-plus"></i> บันทึกเพิ่มเข้าคลัง
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stock List Table -->
+                <div>
+                    <h4 class="text-xs font-bold text-white mb-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-boxes-stacked text-amber-400"></i> รายการพัสดุทั้งหมดในคลัง
+                    </h4>
+                    <div class="overflow-x-auto border border-slate-700 rounded-xl">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-800 text-slate-300 border-b border-slate-700">
+                                    <th class="p-2.5">รหัสพัสดุ</th>
+                                    <th class="p-2.5">ชื่อพัสดุ / อะไหล่</th>
+                                    <th class="p-2.5 text-center">คงเหลือ</th>
+                                    <th class="p-2.5 text-center">หน่วยนับ</th>
+                                    <th class="p-2.5 text-right">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stockTableBody" class="divide-y divide-slate-800 bg-slate-900/60">
+                                <!-- Populated via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         GOOGLE SHEETS & HISTORY MODAL (ตรวจสอบ & ดึงข้อมูล)
+         ========================================== -->
+    <div id="sheetsModal" class="no-print fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+            <div class="px-4 py-3 bg-slate-800 flex items-center justify-between border-b border-slate-700">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-table text-emerald-400 text-lg"></i>
+                    <div>
+                        <h3 class="text-sm font-bold text-white">ตรวจสอบประวัติการเบิกจ่าย & Google Sheets</h3>
+                        <p class="text-[11px] text-slate-400">ตรวจสอบประวัติย้อนหลัง ดึงข้อมูลเดิมขึ้นมาดู ปริ้น หรือส่งออก Google Sheets</p>
+                    </div>
+                </div>
+                <button onclick="closeSheetsModal()" class="text-slate-400 hover:text-white text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-4 overflow-y-auto space-y-4 flex-1">
+                <!-- Google Sheets Web App URL Configuration -->
+                <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3.5 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-bold text-sky-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-link"></i> ลิงก์เชื่อมต่อ Google Sheets Web App URL (Apps Script)
+                        </label>
+                        <button onclick="toggleAppsScriptGuide()" class="text-[11px] text-amber-300 hover:underline">
+                            <i class="fa-solid fa-circle-question"></i> ดูโค้ด Google Sheets ฟรี
+                        </button>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="url" id="inpGoogleScriptUrl" placeholder="วาง URL ของ Google Apps Script (https://script.google.com/macros/s/.../exec)" class="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-1.5 text-xs text-white outline-none">
+                        <button onclick="saveGoogleScriptUrl()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold">
+                            บันทึก URL
+                        </button>
+                    </div>
+
+                    <!-- Collapsible Google Apps Script Guide -->
+                    <div id="appsScriptGuideBox" class="hidden pt-2 border-t border-slate-700 text-[11px] text-slate-300 space-y-1.5">
+                        <p class="text-amber-300 font-semibold">วิธีเชื่อม Google Sheets ของคุณเอง:</p>
+                        <ol class="list-decimal list-inside space-y-0.5 text-slate-300">
+                            <li>สร้าง Google Sheets ใหม่ ไปที่เมนู <strong>ส่วนขยาย &gt; Apps Script</strong></li>
+                            <li>วางโค้ดด้านล่าง แล้วกด <strong>การทำให้ใช้งานได้ &gt; รายการใหม่ &gt; เว็บแอป (ทุกคนเข้าถึงได้)</strong></li>
+                            <li>คัดลอก URL มาวางในช่องด้านบน ข้อมูลการเบิกจะถูกบันทึกเข้า Sheets อัตโนมัติ</li>
+                        </ol>
+                        <pre class="bg-slate-950 p-2 rounded text-[10px] text-emerald-300 overflow-x-auto">function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var d = JSON.parse(e.postData.contents);
+  sheet.appendRow([new Date(), d.reqNo, d.requesterName, d.empId, d.department, d.purpose, JSON.stringify(d.items)]);
+  return ContentService.createTextOutput(JSON.stringify({status: "success"})).setMimeType(ContentService.MimeType.JSON);
+}</pre>
+                    </div>
+                </div>
+
+                <!-- History Table -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-xs font-bold text-white flex items-center gap-1.5">
+                            <i class="fa-solid fa-clock-rotate-left text-amber-400"></i> ประวัติใบเบิกทั้งหมด (คลิก "ดูข้อมูล" เพื่อดึงขึ้นมาแสดง)
+                        </h4>
+                        <input type="text" id="inpSearchHistory" oninput="renderHistoryTable()" placeholder="ค้นหาชื่อผู้เบิก / เลขที่ใบเบิก..." class="bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-1 text-xs text-white outline-none">
+                    </div>
+                    <div class="overflow-x-auto border border-slate-700 rounded-xl">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-800 text-slate-300 border-b border-slate-700">
+                                    <th class="p-2.5">วันที่ / เวลา</th>
+                                    <th class="p-2.5">เลขที่ใบเบิก</th>
+                                    <th class="p-2.5">ชื่อผู้เบิก</th>
+                                    <th class="p-2.5">แผนก</th>
+                                    <th class="p-2.5">วัตถุประสงค์</th>
+                                    <th class="p-2.5 text-center">จำนวนรายการ</th>
+                                    <th class="p-2.5 text-right">จัดการ / ดึงข้อมูล</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody" class="divide-y divide-slate-800 bg-slate-900/60">
+                                <!-- Populated via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PWA Install Guide Modal -->
+    <div id="installGuideModal" class="no-print fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
+            <div class="px-4 py-3 bg-slate-800 flex items-center justify-between border-b border-slate-700">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-mobile-screen-button text-purple-400"></i> วิธีติดตั้งแอปเบิกจ่ายลงโทรศัพท์
+                </h3>
+                <button onclick="document.getElementById('installGuideModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-4 space-y-3 text-xs text-slate-300">
+                <div class="p-3 rounded-xl bg-slate-800 border border-slate-700">
+                    <div class="font-bold text-emerald-400 mb-1"><i class="fa-brands fa-android mr-1"></i> สำหรับ Android (Chrome)</div>
+                    <p>แตะเมนู <strong>จุด 3 จุด (⋮)</strong> มุมขวาบน แล้วเลือก <strong>"ติดตั้งแอป" (Install App)</strong> หรือ <strong>"เพิ่มลงในหน้าจอหลัก"</strong></p>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-800 border border-slate-700">
+                    <div class="font-bold text-sky-400 mb-1"><i class="fa-brands fa-apple mr-1"></i> สำหรับ iPhone / iPad (Safari)</div>
+                    <p>แตะปุ่ม <strong>แชร์ (Share)</strong> ด้านล่าง แล้วเลือก <strong>"เพิ่มไปยังหน้าจอโฮม" (Add to Home Screen)</strong></p>
+                </div>
+                <button onclick="document.getElementById('installGuideModal').classList.add('hidden')" class="w-full py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold">
+                    เข้าใจแล้ว
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="no-print fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-3"></div>
+
+    <!-- ==========================================
+         APPLICATION JAVASCRIPT LOGIC
+         ========================================== -->
+    <script>
+        /* Default Stock Items */
+        let stockItems = [
+            { id: "SK-001", name: "ตลับลูกปืน SKF 6312", qty: 24, unit: "ตลับ" },
+            { id: "SK-002", name: "สายพานร่อง V-Belt B-52", qty: 15, unit: "เส้น" },
+            { id: "SK-003", name: "โอริงกันรั่ว Viton O-Ring 4 นิ้ว", qty: 50, unit: "วง" },
+            { id: "SK-004", name: "จาระบีทนความร้อนสูง SKF LGHP 2", qty: 10, unit: "หลอด" },
+            { id: "SK-005", name: "ฟิวส์เซรามิก 10A (Ceramic Fuse)", qty: 80, unit: "ตัว" }
+        ];
+
+        let requisitionState = {
+            reqNo: "REQ-" + new Date().getFullYear() + "-" + Math.floor(100 + Math.random() * 900),
+            requesterName: "นายสมชาย ใจดี",
+            empId: "EMP-1024",
+            department: "แผนกซ่อมบำรุงเครื่องจักร (Maintenance)",
+            reqDate: new Date().toISOString().split('T')[0],
+            reqTime: new Date().toTimeString().slice(0, 5),
+            purpose: "เปลี่ยนตลับลูกปืนและตั้งสายพานพัดลม Blower #2",
+            items: [
+                { code: "SK-001", name: "ตลับลูกปืน SKF 6312", qty: 2, unit: "ตลับ" },
+                { code: "SK-002", name: "สายพานร่อง V-Belt B-52", qty: 2, unit: "เส้น" }
+            ]
+        };
+
+        let previewZoom = 1.0;
+        let deferredPwaPrompt = null;
+
+        function initApp() {
+            const savedStock = localStorage.getItem("REQUISITION_STOCK_DB");
+            if (savedStock) {
+                try { stockItems = JSON.parse(savedStock); } catch(e){}
+            }
+
+            const savedUrl = localStorage.getItem("REQUISITION_GAS_URL") || "";
+            document.getElementById("inpGoogleScriptUrl").value = savedUrl;
+
+            syncInputsFromState();
+            renderAll();
+            fitZoomToScreen();
+            setupPWAFeatures();
+        }
+
+        window.addEventListener("load", initApp);
+
+        function syncInputsFromState() {
+            document.getElementById("inpReqNo").value = requisitionState.reqNo;
+            document.getElementById("inpRequesterName").value = requisitionState.requesterName;
+            document.getElementById("inpEmpId").value = requisitionState.empId;
+            document.getElementById("inpDepartment").value = requisitionState.department;
+            document.getElementById("inpReqDate").value = requisitionState.reqDate;
+            document.getElementById("inpReqTime").value = requisitionState.reqTime;
+            document.getElementById("inpPurpose").value = requisitionState.purpose;
+        }
+
+        function updateHeaderInfo() {
+            requisitionState.reqNo = document.getElementById("inpReqNo").value;
+            requisitionState.requesterName = document.getElementById("inpRequesterName").value;
+            requisitionState.empId = document.getElementById("inpEmpId").value;
+            requisitionState.department = document.getElementById("inpDepartment").value;
+            requisitionState.reqDate = document.getElementById("inpReqDate").value;
+            requisitionState.reqTime = document.getElementById("inpReqTime").value;
+            requisitionState.purpose = document.getElementById("inpPurpose").value;
+            renderA4Preview();
+        }
+
+        function renderAll() {
+            renderStockSelectDropdown();
+            renderStockTable();
+            renderRequisitionItemsEditor();
+            renderA4Preview();
+        }
+
+        function renderStockSelectDropdown() {
+            const sel = document.getElementById("selStockItem");
+            sel.innerHTML = `<option value="">-- เลือกรายการพัสดุในคลัง --</option>`;
+            stockItems.forEach(item => {
+                const opt = document.createElement("option");
+                opt.value = item.id;
+                opt.textContent = `${item.name} (คงเหลือ: ${item.qty} ${item.unit})`;
+                sel.appendChild(opt);
+            });
+        }
+
+        function addSelectedItemToRequisition() {
+            const stockId = document.getElementById("selStockItem").value;
+            const qty = parseInt(document.getElementById("inpAddQty").value) || 1;
+            if (!stockId) {
+                showToast("กรุณาเลือกพัสดุจากคลัง", "warning");
+                return;
+            }
+            const found = stockItems.find(s => s.id === stockId);
+            if (!found) return;
+
+            requisitionState.items.push({
+                code: found.id,
+                name: found.name,
+                qty: qty,
+                unit: found.unit
+            });
+            renderAll();
+            showToast(`เพิ่ม "${found.name}" เข้ารายการเบิกเรียบร้อย`, "success");
+        }
+
+        function addCustomItemToRequisition() {
+            const name = document.getElementById("inpCustomItemName").value.trim();
+            const qty = parseInt(document.getElementById("inpCustomItemQty").value) || 1;
+            const unit = document.getElementById("inpCustomItemUnit").value.trim() || "ชิ้น";
+
+            if (!name) {
+                showToast("กรุณาระบุชื่อรายการพัสดุ", "warning");
+                return;
+            }
+
+            requisitionState.items.push({
+                code: "CUST-" + Math.floor(100 + Math.random() * 900),
+                name: name,
+                qty: qty,
+                unit: unit
+            });
+
+            document.getElementById("inpCustomItemName").value = "";
+            document.getElementById("inpCustomItemQty").value = "1";
+            document.getElementById("inpCustomItemUnit").value = "";
+            renderAll();
+            showToast(`เพิ่มพัสดุพิเศษ "${name}" เข้ารายการเรียบร้อย`, "success");
+        }
+
+        function renderRequisitionItemsEditor() {
+            const container = document.getElementById("requisitionItemsEditorList");
+            const countLbl = document.getElementById("lblItemCount");
+            container.innerHTML = "";
+            countLbl.textContent = requisitionState.items.length;
+
+            if (!requisitionState.items.length) {
+                container.innerHTML = `<div class="text-xs text-slate-400 text-center py-2">ยังไม่มีรายการพัสดุในใบเบิกนี้</div>`;
+                return;
+            }
+
+            requisitionState.items.forEach((item, idx) => {
+                const div = document.createElement("div");
+                div.className = "bg-slate-900 border border-slate-700/80 rounded-lg p-2 flex items-center justify-between gap-2";
+                div.innerHTML = `
+                    <div class="min-w-0 flex-1">
+                        <div class="text-xs font-bold text-white truncate">${idx + 1}. ${escapeHtml(item.name)}</div>
+                        <div class="text-[10px] text-slate-400">รหัส: ${escapeHtml(item.code)} | หน่วย: ${escapeHtml(item.unit)}</div>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <input type="number" min="1" value="${item.qty}" onchange="updateItemQty(${idx}, this.value)" class="w-14 bg-slate-800 border border-slate-600 rounded px-1.5 py-1 text-xs text-white text-center font-bold">
+                        <span class="text-[11px] text-slate-300">${escapeHtml(item.unit)}</span>
+                        <button onclick="removeRequisitionItem(${idx})" class="text-rose-400 hover:text-rose-300 px-1.5 text-xs"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateItemQty(idx, val) {
+            const q = parseInt(val) || 1;
+            if (requisitionState.items[idx]) {
+                requisitionState.items[idx].qty = q;
+                renderA4Preview();
+            }
+        }
+
+        function removeRequisitionItem(idx) {
+            requisitionState.items.splice(idx, 1);
+            renderAll();
+        }
+
+        function clearRequisitionItems() {
+            requisitionState.items = [];
+            renderAll();
+        }
+
+        function resetRequisitionForm() {
+            requisitionState = {
+                reqNo: "REQ-" + new Date().getFullYear() + "-" + Math.floor(100 + Math.random() * 900),
+                requesterName: "",
+                empId: "",
+                department: "",
+                reqDate: new Date().toISOString().split('T')[0],
+                reqTime: new Date().toTimeString().slice(0, 5),
+                purpose: "",
+                items: []
+            };
+            syncInputsFromState();
+            renderAll();
+            showToast("เริ่มสร้างใบเบิกใหม่เรียบร้อย", "info");
+        }
+
+        function renderA4Preview() {
+            document.getElementById("viewReqNo").textContent = requisitionState.reqNo || "-";
+            document.getElementById("viewReqDate").textContent = requisitionState.reqDate || "-";
+            document.getElementById("viewReqTime").textContent = requisitionState.reqTime || "-";
+            document.getElementById("viewRequesterName").textContent = requisitionState.requesterName || "-";
+            document.getElementById("viewEmpId").textContent = requisitionState.empId || "-";
+            document.getElementById("viewDepartment").textContent = requisitionState.department || "-";
+            document.getElementById("viewPurpose").textContent = requisitionState.purpose || "-";
+            document.getElementById("signRequesterName").textContent = requisitionState.requesterName ? `(${requisitionState.requesterName})` : "ผู้เบิกสินค้า";
+
+            const tbody = document.getElementById("viewTableBody");
+            tbody.innerHTML = "";
+
+            if (!requisitionState.items.length) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:15px; color:#64748b;">(ยังไม่มีรายการพัสดุ กรุณาเพิ่มรายการพัสดุด้านซ้าย)</td></tr>`;
+                return;
+            }
+
+            requisitionState.items.forEach((item, idx) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="text-align:center; padding:6px; border:1px solid #cbd5e1;">${idx + 1}</td>
+                        <td style="text-align:center; padding:6px; border:1px solid #cbd5e1; font-weight:600; color:#475569;">${escapeHtml(item.code)}</td>
+                        <td style="padding:6px; border:1px solid #cbd5e1; font-weight:600;">${escapeHtml(item.name)}</td>
+                        <td style="text-align:center; padding:6px; border:1px solid #cbd5e1; font-weight:700; color:#2563eb; font-size:12px;">${item.qty}</td>
+                        <td style="text-align:center; padding:6px; border:1px solid #cbd5e1;">${escapeHtml(item.unit)}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        /* Stock Modal Management */
+        function openStockModal() {
+            document.getElementById("stockModal").classList.remove("hidden");
+            document.getElementById("stockModal").classList.add("flex");
+            renderStockTable();
+        }
+
+        function closeStockModal() {
+            document.getElementById("stockModal").classList.add("hidden");
+            document.getElementById("stockModal").classList.remove("flex");
+        }
+
+        function renderStockTable() {
+            const tbody = document.getElementById("stockTableBody");
+            tbody.innerHTML = "";
+            stockItems.forEach((st, idx) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="p-2.5 font-bold text-sky-300">${escapeHtml(st.id)}</td>
+                    <td class="p-2.5 text-white font-medium">${escapeHtml(st.name)}</td>
+                    <td class="p-2.5 text-center font-bold text-amber-300">${st.qty}</td>
+                    <td class="p-2.5 text-center">${escapeHtml(st.unit)}</td>
+                    <td class="p-2.5 text-right">
+                        <button onclick="deleteStockItem(${idx})" class="px-2 py-1 rounded bg-rose-900/50 hover:bg-rose-700 text-rose-200 text-[11px]"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function addNewStockItem() {
+            const code = document.getElementById("newStockCode").value.trim() || ("SK-" + Math.floor(100 + Math.random() * 900));
+            const name = document.getElementById("newStockName").value.trim();
+            const qty = parseInt(document.getElementById("newStockQty").value) || 10;
+            const unit = document.getElementById("newStockUnit").value.trim() || "ชิ้น";
+
+            if (!name) {
+                showToast("กรุณาระบุชื่อพัสดุ", "warning");
+                return;
+            }
+
+            stockItems.push({ id: code, name: name, qty: qty, unit: unit });
+            localStorage.setItem("REQUISITION_STOCK_DB", JSON.stringify(stockItems));
+
+            document.getElementById("newStockCode").value = "";
+            document.getElementById("newStockName").value = "";
+            renderAll();
+            showToast(`เพิ่ม "${name}" เข้าคลังพัสดุเรียบร้อย`, "success");
+        }
+
+        function deleteStockItem(idx) {
+            stockItems.splice(idx, 1);
+            localStorage.setItem("REQUISITION_STOCK_DB", JSON.stringify(stockItems));
+            renderAll();
+            showToast("ลบพัสดุออกจากคลังเรียบร้อย", "info");
+        }
+
+        /* History & Google Sheets Integration */
+        function openSheetsModal() {
+            document.getElementById("sheetsModal").classList.remove("hidden");
+            document.getElementById("sheetsModal").classList.add("flex");
+            renderHistoryTable();
+        }
+
+        function closeSheetsModal() {
+            document.getElementById("sheetsModal").classList.add("hidden");
+            document.getElementById("sheetsModal").classList.remove("flex");
+        }
+
+        function toggleAppsScriptGuide() {
+            document.getElementById("appsScriptGuideBox").classList.toggle("hidden");
+        }
+
+        function saveGoogleScriptUrl() {
+            const url = document.getElementById("inpGoogleScriptUrl").value.trim();
+            localStorage.setItem("REQUISITION_GAS_URL", url);
+            showToast("บันทึก Google Sheets URL เรียบร้อย", "success");
+        }
+
+        function getSavedHistoryList() {
+            try {
+                const raw = localStorage.getItem("REQUISITION_HISTORY_DB");
+                return raw ? JSON.parse(raw) : [];
+            } catch(e) { return []; }
+        }
+
+        async function saveRequisitionRecord() {
+            if (!requisitionState.requesterName.trim()) {
+                showToast("กรุณาระบุชื่อผู้เบิกพัสดุก่อนบันทึก", "warning");
+                return;
+            }
+            if (!requisitionState.items.length) {
+                showToast("กรุณาเพิ่มรายการพัสดุอย่างน้อย 1 รายการ", "warning");
+                return;
+            }
+
+            const history = getSavedHistoryList();
+            const record = JSON.parse(JSON.stringify(requisitionState));
+            record.savedTimestamp = new Date().toLocaleString("th-TH");
+            record.id = "HIST-" + Date.now();
+
+            history.unshift(record);
+            localStorage.setItem("REQUISITION_HISTORY_DB", JSON.stringify(history.slice(0, 50)));
+
+            const gasUrl = (localStorage.getItem("REQUISITION_GAS_URL") || "").trim();
+            if (gasUrl) {
+                try {
+                    await fetch(gasUrl, {
+                        method: "POST",
+                        mode: "no-cors",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(record)
+                    });
+                    showToast("บันทึกข้อมูลเข้า Google Sheets และระบบตรวจสอบเรียบร้อย!", "success");
+                } catch(err) {
+                    showToast("บันทึกในเครื่องสำเร็จ แต่ส่งไป Sheets ไม่สำเร็จ", "warning");
+                }
+            } else {
+                showToast("บันทึกใบเบิกเข้าประวัติการตรวจสอบเรียบร้อย!", "success");
+            }
+        }
+
+        function renderHistoryTable() {
+            const tbody = document.getElementById("historyTableBody");
+            const kw = (document.getElementById("inpSearchHistory").value || "").toLowerCase();
+            const history = getSavedHistoryList();
+
+            const filtered = history.filter(h =>
+                (h.requesterName || "").toLowerCase().includes(kw) ||
+                (h.reqNo || "").toLowerCase().includes(kw) ||
+                (h.department || "").toLowerCase().includes(kw)
+            );
+
+            if (!filtered.length) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">ยังไม่มีประวัติการเบิก กดปุ่ม "บันทึกเบิกจ่าย" ด้านบน</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = "";
+            filtered.forEach(h => {
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-800/70 transition";
+                tr.innerHTML = `
+                    <td class="p-2.5 text-slate-300">${escapeHtml(h.reqDate)} ${escapeHtml(h.reqTime)}</td>
+                    <td class="p-2.5 font-bold text-amber-300">${escapeHtml(h.reqNo)}</td>
+                    <td class="p-2.5 font-medium text-white">${escapeHtml(h.requesterName)}</td>
+                    <td class="p-2.5 text-slate-300">${escapeHtml(h.department || '-')}</td>
+                    <td class="p-2.5 text-slate-300">${escapeHtml(h.purpose || '-')}</td>
+                    <td class="p-2.5 text-center font-bold text-sky-300">${h.items?.length || 0} รายการ</td>
+                    <td class="p-2.5 text-right space-x-1">
+                        <button onclick="loadHistoryRecord('${h.id}')" class="px-2.5 py-1 rounded bg-sky-600 hover:bg-sky-500 text-white font-semibold text-[11px]">
+                            <i class="fa-solid fa-folder-open mr-1"></i> ดูข้อมูล
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function loadHistoryRecord(id) {
+            const history = getSavedHistoryList();
+            const found = history.find(h => h.id === id);
+            if (!found) return;
+            requisitionState = JSON.parse(JSON.stringify(found));
+            syncInputsFromState();
+            renderAll();
+            closeSheetsModal();
+            showToast(`ดึงข้อมูลใบเบิก ${requisitionState.reqNo} ขึ้นมาแสดงเรียบร้อย`, "success");
+        }
+
+        /* Export & Print */
+        function printOrSavePDF() {
+            window.print();
+        }
+
+        async function exportWordDoc() {
+            showToast("กำลังสร้างไฟล์ Microsoft Word (.doc)...", "info");
+            let itemsHtml = "";
+            requisitionState.items.forEach((item, idx) => {
+                itemsHtml += `
+                    <tr>
+                        <td style="border:1px solid #94a3b8; padding:5px; text-align:center;">${idx + 1}</td>
+                        <td style="border:1px solid #94a3b8; padding:5px; text-align:center;">${escapeHtml(item.code)}</td>
+                        <td style="border:1px solid #94a3b8; padding:5px;">${escapeHtml(item.name)}</td>
+                        <td style="border:1px solid #94a3b8; padding:5px; text-align:center; font-weight:bold;">${item.qty}</td>
+                        <td style="border:1px solid #94a3b8; padding:5px; text-align:center;">${escapeHtml(item.unit)}</td>
+                    </tr>
+                `;
+            });
+
+            const docContent = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head><meta charset="utf-8"><title>Requisition Slip</title></head>
+                <body style="font-family:'Sarabun', sans-serif;">
+                    <h2 style="text-align:center; color:#0f172a;">ใบเบิกวัสดุและอะไหล่ (REQUISITION SLIP)</h2>
+                    <p><strong>เลขที่:</strong> ${escapeHtml(requisitionState.reqNo)} | <strong>วันที่:</strong> ${escapeHtml(requisitionState.reqDate)} เวลา ${escapeHtml(requisitionState.reqTime)}</p>
+                    <p><strong>ผู้เบิก:</strong> ${escapeHtml(requisitionState.requesterName)} (${escapeHtml(requisitionState.empId)}) | <strong>แผนก:</strong> ${escapeHtml(requisitionState.department)}</p>
+                    <p><strong>วัตถุประสงค์:</strong> ${escapeHtml(requisitionState.purpose)}</p>
+                    <table style="width:100%; border-collapse:collapse; margin-top:15px;" border="1" cellspacing="0" cellpadding="5">
+                        <tr style="background:#0f172a; color:#ffffff;">
+                            <th>ลำดับ</th><th>รหัสพัสดุ</th><th>รายการพัสดุ / อะไหล่</th><th>จำนวน</th><th>หน่วยนับ</th>
+                        </tr>
+                        ${itemsHtml}
+                    </table>
+                    <br><br>
+                    <table style="width:100%; text-align:center; margin-top:30px;">
+                        <tr>
+                            <td>..................................................<br><strong>ผู้เบิกสินค้า</strong><br>(${escapeHtml(requisitionState.requesterName)})</td>
+                            <td>..................................................<br><strong>ผู้จ่ายพัสดุ</strong></td>
+                            <td>..................................................<br><strong>ผู้อนุมัติ</strong></td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+            `;
+
+            const blob = new Blob(['\ufeff', docContent], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Requisition_${requisitionState.reqNo}.doc`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast("ดาวน์โหลดไฟล์ .WORD เรียบร้อย", "success");
+        }
+
+        /* Zoom & PWA */
+        function adjustPreviewZoom(delta) {
+            previewZoom = Math.min(1.5, Math.max(0.4, +(previewZoom + delta).toFixed(2)));
+            applyZoomTransform();
+        }
+
+        function fitZoomToScreen() {
+            const container = document.getElementById("previewContainer");
+            if (!container) return;
+            const availW = container.clientWidth - 30;
+            const sheetW = 794;
+            if (availW < sheetW) {
+                previewZoom = Math.max(0.4, +(availW / sheetW).toFixed(2));
+            } else {
+                previewZoom = 0.95;
+            }
+            applyZoomTransform();
+        }
+
+        function applyZoomTransform() {
+            const ws = document.getElementById("a4Workspace");
+            const label = document.getElementById("zoomValueText");
+            if (ws) ws.style.transform = `scale(${previewZoom})`;
+            if (label) label.textContent = Math.round(previewZoom * 100) + "%";
+        }
+
+        function setupPWAFeatures() {
+            const manifestObj = {
+                name: "Inventory Requisition Pro",
+                short_name: "ReqPro",
+                start_url: ".",
+                display: "standalone",
+                background_color: "#0f172a",
+                theme_color: "#f97316",
+                icons: [{
+                    src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23f97316'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='45' fill='white'>REQ</text></svg>",
+                    sizes: "192x192",
+                    type: "image/svg+xml"
+                }]
+            };
+            const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/json' });
+            const link = document.createElement('link');
+            link.rel = 'manifest';
+            link.href = URL.createObjectURL(manifestBlob);
+            document.head.appendChild(link);
+
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPwaPrompt = e;
+            });
+        }
+
+        async function handleInstallPWA() {
+            if (deferredPwaPrompt) {
+                deferredPwaPrompt.prompt();
+                await deferredPwaPrompt.userChoice;
+                deferredPwaPrompt = null;
+            } else {
+                document.getElementById("installGuideModal").classList.remove("hidden");
+                document.getElementById("installGuideModal").classList.add("flex");
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return "";
+            return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById("toastContainer");
+            const toast = document.createElement("div");
+            const colors = {
+                success: "bg-emerald-900/95 border-emerald-500 text-emerald-100",
+                warning: "bg-amber-900/95 border-amber-500 text-amber-100",
+                info: "bg-slate-800/95 border-sky-500 text-sky-100"
+            };
+            toast.className = `pointer-events-auto border-l-4 px-3.5 py-2.5 rounded-xl shadow-xl text-xs font-medium flex items-center gap-2.5 transition-all duration-300 ${colors[type] || colors.info}`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-info text-sm"></i><span>${escapeHtml(message)}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = "0";
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+    </script>
+</body>
+</html>
